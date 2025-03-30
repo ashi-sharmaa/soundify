@@ -312,7 +312,7 @@ import {
       for (let i = 0; i < pieceArray.length; i++) {
         // console.log(pieceArray[i]);
         if (pieceArray[i] < 0) {
-          let pieceLength = (video.videoWidth / 4) / (0 - pieceArray[i]);
+          let pieceLength = (canvasCtx.style.width / 4) / (0 - pieceArray[i]);
           let pieceLength1 = pieceLength * .8;
           let pieceLength2 = pieceLength * .2;
           canvasCtx.fillStyle = "black";
@@ -340,7 +340,7 @@ import {
           }
           curPix += pieceLength;
         } else {
-          let pieceLength = (video.videoWidth / 4) / pieceArray[i];
+          let pieceLength = (canvasCtx.style.width / 4) / pieceArray[i];
           canvasCtx.fillStyle = "blue";
           canvasCtx.fillRect(curPix, 0, curPix + pieceLength, barHeight);
           if (cursorPosition > curPix && cursorPosition < curPix + pieceLength) {
