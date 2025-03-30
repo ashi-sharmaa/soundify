@@ -62,6 +62,7 @@ import {
   let generateBlocks2 = false;
 
   var metronomeAudio = new Audio("met_120bpm.mp3");
+  metronomeAudio.loop = false;
   var metronomeAudio2 = new Audio("Perc_Can_lo.wav");
   
   // Before we can use HandLandmarker class we must wait for it to finish
@@ -174,8 +175,8 @@ import {
       pingRight = 0;
       cursorPosition = 0;
       cursorTimeStart = Date.now();
-      metronomeAudio.currentTime = 0;
       metronomeAudio.play();
+      metronomeAudio.currentTime = 0;
     } else {
       trackTapState = 0;
       trackTapsButton.innerText = "TRACK TAPS";
