@@ -369,12 +369,16 @@ import {
         cursorTimeStart = Date.now();
         console.log("RIGHT ACCURACY: " + (rightAccuracy/pingRight));
         document.getElementById("right").textContent="Right Accuracy: " + (rightAccuracy/pingRight);
-        pingRight = 0;
-        rightAccuracy = 0;
+        
         console.log("LEFT ACCURACY: " + (leftAccuracy/pingLeft));
         document.getElementById("left").textContent="Left Accuracy: " + (leftAccuracy/pingLeft);
+        window.top.postMessage(`success ${Math.round(leftAccuracy/pingLeft * 100)}`, '*');
+        pingRight = 0;
+        rightAccuracy = 0;
         pingLeft = 0;
         leftAccuracy = 0;
+
+
       }
       cursorPosition = video.videoWidth * progress;
       canvasCtx.strokeStyle = "red";
