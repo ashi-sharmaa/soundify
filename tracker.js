@@ -22,7 +22,20 @@ import {
   let handLandmarker = undefined;
   let runningMode = "IMAGE";
   let enableWebcamButton = HTMLButtonElement;
+  let calibrateButton = HTMLButtonElement;
+  let trackTapsButton = HTMLButtonElement;
   let webcamRunning = false;
+
+
+  let calibrateState = 0;
+  let calibrationTime = 5;
+  let calibrateStartTime = 0;
+  let calibratedDistanceAverage = 0;
+  let calibratedNumPings = 0;
+
+  let trackTapState = 0;
+  let tapped = false;
+  let minDistance = 0;
   
   // Before we can use HandLandmarker class we must wait for it to finish
   // loading. Machine Learning models can be large and take a moment to
@@ -62,6 +75,13 @@ import {
   if (hasGetUserMedia()) {
     enableWebcamButton = document.getElementById("webcamButton");
     enableWebcamButton.addEventListener("click", enableCam);
+
+    calibrateButton = document.getElementById("calibrateButton");
+    calibrateButton.addEventListener("click", beginCalibration);
+
+    trackTapsButton = document.getElementById("trackTapsButton");
+    trackTapsButton.addEventListener("click", flipTapTracking);
+    
   } else {
     console.warn("getUserMedia() is not supported by your browser");
   }
@@ -92,6 +112,25 @@ import {
       video.addEventListener("loadeddata", predictWebcam);
     });
   }
+
+  function beginCalibration(event) {
+    if (webcamRunning == false) {
+      console.log("Wait! webcam not running yet.");
+      return;
+    }
+
+    calibrateState = 1;
+  }
+
+  function flipTapTracking(event) {
+    if (trackTapState == false) {
+      trackTapState = true;
+      trackTapsButton.innerText = "STOP TRACKING";
+    } else {
+      trackTapState = false;
+      trackTapsButton.innerText = "TRACK TAPS";
+    }
+  }
   
   let lastVideoTime = -1;
   let results = undefined;
@@ -115,6 +154,41 @@ import {
     canvasCtx.save();
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
     if (results.landmarks) {
+
+      if (calibrateState == 1) {
+        console.log("calibrating!");
+        calibrateStartTime = Date.now();
+        calibrateState = 2;
+        calibratedNumPings = 0;
+        calibratedDistanceAverage = 0;
+      } 
+
+      if (calibrateState == 2) {
+        if (Date.now() > calibrateStartTime + calibrationTime * 1000) {
+          calibrateState = 3;
+          calibratedDistanceAverage /= calibratedNumPings;
+          minDistance = calibratedDistanceAverage *= .25;
+          console.log(calibratedDistanceAverage);
+        } else {
+          calibratedDistanceAverage += getSquaredDistance(results.landmarks[0], 4, 8);
+          calibratedNumPings++;
+          console.log(calibratedNumPings);
+        }
+      }
+
+      if (trackTapState == true) {
+        if (tapped == false) {
+          if (getSquaredDistance(results.landmarks[0], 4, 8) < minDistance) {
+            console.log("Tapped! " + Date.now());
+            tapped = true;
+          }
+        } else {
+          if (getSquaredDistance(results.landmarks[0], 4, 8) >= minDistance) {
+            tapped = false;
+          }
+        }
+      }
+
        for (const landmarks of results.landmarks) {
             drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {
             color: "#00FF00",
@@ -122,8 +196,8 @@ import {
             });
 
             drawLandmarks(canvasCtx, landmarks, { color: "#FF0000", lineWidth: 2 });
-            let x = getSquaredDistance(landmarks, 4, 8);
-            console.log(x);
+            // let x = getSquaredDistance(landmarks, 4, 8);
+            // console.log(x);
         }
     } 
      
@@ -132,23 +206,31 @@ import {
     // tell user to show hands for 10 seconds
     // for hall seconds, get average hand width 
 
-    let tapped = false; 
-    let minRadius = getSquaredDistance(landmarks[0], 4, 8);
+    // let tapped = false; 
+    // let minRadius = getSquaredDistance(landmarks[0], 4, 8);
    
-    
-
 
     canvasCtx.restore();
 
+    // function calibrate() {
+    //   start = Date.now();
+    //   tDistTotal = 0;
+    //   numPings = 0;
+    //   while (Date.now() < start + 10_000) {
+        
+    //   }
+
+    // }
+
     function getSquaredDistance(landmark, index1, index2) {
       let xDiff = landmark[index1].x - landmark[index2].x;
-      let yDiff = landmark[index1].y - landmark[index2].y
-      return xDiff*xDiff + yDiff*yDiff; 
+      let yDiff = landmark[index1].y - landmark[index2].y;
+      return xDiff * xDiff + yDiff * yDiff; 
     }
 
     function timeInSecs() {
-        return Math.floor(Date.now() / 1000)
-      }
+      return Math.floor(Date.now() / 1000);
+    }
     
   
     // Call this function again to keep predicting when the browser is ready.
