@@ -33,7 +33,9 @@ import {
   let calibratedDistanceAverage = 0;
   let calibratedDistanceAverageRight = 0;
   let calibratedDistanceAverageLeft = 0;
-  let calibratedNumPings = 0;
+  let calibratedNumPingsLeft = 0;
+  let calibratedNumPingsRight = 0;
+
 
   // variables relevant to tapTracking
   let trackTapState = 0;  // 0 == Not tracking, 1 == Tracking 
@@ -45,6 +47,19 @@ import {
   let minDistanceRight = 0;
   let minDistanceLeft = 0;
   let minDistanceMultiplier = .25;
+
+  // variables relevant to bar and cursor
+  let piece1 = [];
+  let barHeight = 50;
+  let cursorDuration = 8_000;
+  let cursorTimeStart = 0;
+  let cursorPosition = 0;
+  let leftAccuracy = 0;
+  let pingLeft = 0;
+  let rightAccuracy = 0;
+  let pingRight = 0;
+
+  let generateBlocks2 = false;
   
   // Before we can use HandLandmarker class we must wait for it to finish
   // loading. Machine Learning models can be large and take a moment to
@@ -75,6 +90,8 @@ import {
     "output_canvas"
   );
   const canvasCtx = canvasElement.getContext("2d");
+  // const readCanvas = document.getElementById("read_canvas");
+  // const readCanvasCtx = readCanvas.getContext("2d");
   
   // Check if webcam access is supported.
   const hasGetUserMedia = () => !!navigator.mediaDevices?.getUserMedia;
@@ -96,7 +113,8 @@ import {
   }
   
   // Enable the live webcam view and start detection.
-  function enableCam(event) {
+  async function enableCam(event) {
+    piece1 = await generatePieceArray('piece1.txt');
     if (!handLandmarker) {
       console.log("Wait! objectDetector not loaded yet.");
       return;
@@ -109,6 +127,7 @@ import {
       webcamRunning = true;
       enableWebcamButton.innerText = "DISABLE PREDICTIONS";
     }
+    // console.log(piece1);
   
     // getUsermedia parameters.
     const constraints = {
@@ -130,7 +149,8 @@ import {
     }
     console.log("calibrating!");
     calibrateStartTime = Date.now();
-    calibratedNumPings = 0;
+    calibratedNumPingsLeft = 0;
+    calibratedNumPingsRight = 0;
     calibratedDistanceAverage = 0;
     calibrateState = 1;
   }
@@ -143,6 +163,12 @@ import {
     if (trackTapState == 0) {
       trackTapState = 1;
       trackTapsButton.innerText = "STOP TRACKING";
+      leftAccuracy = 0;
+      pingLeft = 0;
+      rightAccuracy = 0;
+      pingRight = 0;
+      cursorPosition = 0;
+      cursorTimeStart = Date.now();
     } else {
       trackTapState = 0;
       trackTapsButton.innerText = "TRACK TAPS";
@@ -181,8 +207,8 @@ import {
           calibrateState = 2;
           // calibratedDistanceAverage /= calibratedNumPings;
           // minDistance = calibratedDistanceAverage *= .25;
-          calibratedDistanceAverageLeft /= calibratedNumPings;
-          calibratedDistanceAverageRight /= calibratedNumPings;
+          calibratedDistanceAverageLeft /= calibratedNumPingsLeft;
+          calibratedDistanceAverageRight /= calibratedNumPingsRight;
           console.log("LEFT: " + calibratedDistanceAverageLeft 
                     + "\nRIGHT: " + calibratedDistanceAverageRight);
           minDistanceLeft = calibratedDistanceAverageLeft * minDistanceMultiplier;
@@ -194,37 +220,25 @@ import {
 
           for (let i = 0; i < results.landmarks.length; i++) {
             let curHand = getSquaredDistance(results.landmarks[i], 4, 8);
-            console.log(results.handednesses[i][0].categoryName);
-            if (results.handednesses[i][0].categoryName == "Left") {
+            if (results.handednesses[i][0].categoryName == "Right") {
               calibratedDistanceAverageLeft += curHand;
+              calibratedNumPingsLeft++;
             } else {
               calibratedDistanceAverageRight += curHand;
+              calibratedNumPingsRight++;
             }
           }
           // calibratedDistanceAverage += getSquaredDistance(results.landmarks[0], 4, 8);
-          calibratedNumPings++;
-          console.log(calibratedNumPings);
+          // calibratedNumPings++;
+          // console.log(calibratedNumPings);
         }
       }
 
       // Tracks Tapping
       if (trackTapState == 1) {
 
-        // Taps are defined by the first time the minDistance exceeds squared distance between 
-        // points 4 and 8. 
-        // if (tapped == false) {
-        //   if (getSquaredDistance(results.landmarks[0], 4, 8) < minDistance) {
-        //     console.log("Tapped! " + Date.now());
-        //     tapped = true;
-        //   }
-        // } else {
-        //   if (getSquaredDistance(results.landmarks[0], 4, 8) >= minDistance) {
-        //     tapped = false;
-        //   }
-        // }
-
         for (let i = 0; i < results.landmarks.length; i++) {
-          if (results.handednesses[i][0].categoryName == "Left") {
+          if (results.handednesses[i][0].categoryName == "Right") {
             if (leftTapped == true) {
               if (getSquaredDistance(results.landmarks[i], 4, 8) >= minDistanceLeft) {
                 console.log("LEFT UNTAPPED: " + Date.now());
@@ -250,40 +264,27 @@ import {
             }
           }
         }
+
+
       }
 
        for (const landmarks of results.landmarks) {
-            drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {
-            color: "#00FF00",
-            lineWidth: 5
-            });
+            // drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {
+            // color: "#00FF00",
+            // lineWidth: 5
+            // });
 
             drawLandmarks(canvasCtx, landmarks, { color: "#FF0000", lineWidth: 2 });
             // let x = getSquaredDistance(landmarks, 4, 8);
             // console.log(x);
+
+            generateBlocks(piece1);
+            if (trackTapState == 1) {
+              advanceCursor();
+            }
         }
     } 
-     
-
-    // CALIBRATION
-    // tell user to show hands for 10 seconds
-    // for hall seconds, get average hand width 
-
-    // let tapped = false; 
-    // let minRadius = getSquaredDistance(landmarks[0], 4, 8);
-   
-
-    canvasCtx.restore();
-
-    // function calibrate() {
-    //   start = Date.now();
-    //   tDistTotal = 0;
-    //   numPings = 0;
-    //   while (Date.now() < start + 10_000) {
-        
-    //   }
-
-    // }
+    // canvasCtx.restore();
 
     function getSquaredDistance(landmark, index1, index2) {
       let xDiff = landmark[index1].x - landmark[index2].x;
@@ -294,12 +295,101 @@ import {
     function timeInSecs() {
       return Math.floor(Date.now() / 1000);
     }
+
+    function generateBlocks(pieceArray) {
+      // console.log("genBlocks");
+      let curPix = 0;
+      for (let i = 0; i < pieceArray.length; i++) {
+        // console.log(pieceArray[i]);
+        if (pieceArray[i] < 0) {
+          let pieceLength = (video.videoWidth / 4) / (0 - pieceArray[i]);
+          let pieceLength1 = pieceLength * .8;
+          let pieceLength2 = pieceLength * .2;
+          canvasCtx.fillStyle = "black";
+          canvasCtx.fillRect(curPix, 0, curPix + pieceLength1, barHeight);
+          canvasCtx.fillStyle = "blue";
+          canvasCtx.fillRect(curPix + pieceLength1, 0, curPix + pieceLength1 + pieceLength2, barHeight);
+          if (cursorPosition > curPix && cursorPosition < curPix + pieceLength1) {
+            if (leftTapped == true) {
+              leftAccuracy++;
+            }
+            pingLeft++;
+            if (rightTapped == true) {
+              rightAccuracy++;
+            }
+            pingRight++;
+          } else if (cursorPosition > curPix + pieceLength1 && cursorPosition < curPix + pieceLength1 + pieceLength2) {
+            if (leftTapped == false) {
+              leftAccuracy++;
+            }
+            pingLeft++;
+            if (rightTapped == false) {
+              rightAccuracy++;
+            }
+            pingRight++;
+          }
+          curPix += pieceLength;
+        } else {
+          let pieceLength = (video.videoWidth / 4) / pieceArray[i];
+          canvasCtx.fillStyle = "blue";
+          canvasCtx.fillRect(curPix, 0, curPix + pieceLength, barHeight);
+          if (cursorPosition > curPix && cursorPosition < curPix + pieceLength) {
+            if (leftTapped == false) {
+              leftAccuracy++;
+            }
+            pingLeft++;
+            if (rightTapped == false) {
+              rightAccuracy++;
+            }
+            pingRight++;
+          }
+          curPix += pieceLength;
+        }
+      }
+      return true;
+    }
+
+    function advanceCursor() {
+      let progress = (Date.now() - cursorTimeStart) / cursorDuration;
+      // console.log(progress);
+      if (progress > 1) {
+        progress = 0;
+        cursorTimeStart = Date.now();
+        console.log("RIGHT ACCURACY: " + (rightAccuracy/pingRight));
+        pingRight = 0;
+        rightAccuracy = 0;
+        console.log("LEFT ACCURACY: " + (leftAccuracy/pingLeft));
+        pingLeft = 0;
+        leftAccuracy = 0;
+      }
+      cursorPosition = video.videoWidth * progress;
+      canvasCtx.strokeStyle = "red";
+      canvasCtx.lineWidth = 10;
+      canvasCtx.beginPath();
+      canvasCtx.moveTo(cursorPosition, 0);
+      canvasCtx.lineTo(cursorPosition, barHeight);
+      canvasCtx.stroke();
+    }
     
   
     // Call this function again to keep predicting when the browser is ready.
     if (webcamRunning === true) {
       window.requestAnimationFrame(predictWebcam);
     }
+}
+
+async function generatePieceArray(inputFile) {
+  let file = await fetch(inputFile);
+  let text = await file.text();
+  text = text.replace(/\r\n/g, ' ');
+  let arr = text.split(' ');
+  // console.log(arr);
+  let arr2 = [];
+  for (let i = 0; i < arr.length; i++) {
+    arr2[i] = parseInt(arr[i]);
+  }
+  // console.log(arr2);
+  return arr2;
 }
   
   
