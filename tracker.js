@@ -114,32 +114,47 @@ import {
     }
     canvasCtx.save();
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-    let i = 0; 
     if (results.landmarks) {
-    //   for (const landmarks of results.landmarks) {
-    //     drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {
-    //       color: "#00FF00",
-    //       lineWidth: 5
-    //     });
+       for (const landmarks of results.landmarks) {
+            drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {
+            color: "#00FF00",
+            lineWidth: 5
+            });
 
-    //     if (i == 0) {
-    //         drawLandmarks(canvasCtx, landmarks, { color: "#FF0000", lineWidth: 2 });
-    //     }
-    //     i++;
-    //   }
-    
+            drawLandmarks(canvasCtx, landmarks, { color: "#FF0000", lineWidth: 2 });
+            let x = getSquaredDistance(landmarks, 4, 8);
+            console.log(x);
+        }
+    } 
+     
+
     // CALIBRATION
+    // tell user to show hands for 10 seconds
+    // for hall seconds, get average hand width 
+
+    let tapped = false; 
+    let minRadius = getSquaredDistance(landmarks[0], 4, 8);
+   
     
 
-    
 
-
-    }
     canvasCtx.restore();
+
+    function getSquaredDistance(landmark, index1, index2) {
+      let xDiff = landmark[index1].x - landmark[index2].x;
+      let yDiff = landmark[index1].y - landmark[index2].y
+      return xDiff*xDiff + yDiff*yDiff; 
+    }
+
+    function timeInSecs() {
+        return Math.floor(Date.now() / 1000)
+      }
+    
   
     // Call this function again to keep predicting when the browser is ready.
     if (webcamRunning === true) {
       window.requestAnimationFrame(predictWebcam);
     }
-  }
+}
+  
   
