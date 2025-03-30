@@ -26,14 +26,16 @@ import {
   let trackTapsButton = HTMLButtonElement;
   let webcamRunning = false;
 
-
-  let calibrateState = 0;
+  // variables relevant to calibration
+  let calibrateState = 0; // 0 == Not Calibrated, 1 == Starting, 2 == In progress, 3 == Complete
   let calibrationTime = 5;
   let calibrateStartTime = 0;
   let calibratedDistanceAverage = 0;
   let calibratedNumPings = 0;
 
-  let trackTapState = 0;
+  // variables relevant to tapTracking
+  let trackTapState = 0;  // 0 == Not tracking, 1 == Tracking 
+                          // Use int rather than boolean in case more states are needed 
   let tapped = false;
   let minDistance = 0;
   
@@ -113,6 +115,7 @@ import {
     });
   }
 
+  // Starts the calibration state
   function beginCalibration(event) {
     if (webcamRunning == false) {
       console.log("Wait! webcam not running yet.");
@@ -122,12 +125,16 @@ import {
     calibrateState = 1;
   }
 
+  // Toggles Tap Tracking.
   function flipTapTracking(event) {
-    if (trackTapState == false) {
-      trackTapState = true;
+    if (calibrateState != 3) {
+      console.log("Wait! calibration has not been completed.");
+    }
+    if (trackTapState == 0) {
+      trackTapState = 1;
       trackTapsButton.innerText = "STOP TRACKING";
     } else {
-      trackTapState = false;
+      trackTapState = 0;
       trackTapsButton.innerText = "TRACK TAPS";
     }
   }
@@ -155,6 +162,7 @@ import {
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
     if (results.landmarks) {
 
+      // When calibration button click, start calibration process
       if (calibrateState == 1) {
         console.log("calibrating!");
         calibrateStartTime = Date.now();
@@ -163,12 +171,18 @@ import {
         calibratedDistanceAverage = 0;
       } 
 
+      // Calibration in Progress
       if (calibrateState == 2) {
+
+        // Calibration ends. Using ms so that it is always 10_000 MS, 
+        // and not any other time that rounds to 10_000 MS
         if (Date.now() > calibrateStartTime + calibrationTime * 1000) {
           calibrateState = 3;
           calibratedDistanceAverage /= calibratedNumPings;
           minDistance = calibratedDistanceAverage *= .25;
           console.log(calibratedDistanceAverage);
+
+        // Data collection for calibration
         } else {
           calibratedDistanceAverage += getSquaredDistance(results.landmarks[0], 4, 8);
           calibratedNumPings++;
@@ -176,7 +190,11 @@ import {
         }
       }
 
-      if (trackTapState == true) {
+      // Tracks Tapping
+      if (trackTapState == 1) {
+
+        // Taps are defined by the first time the minDistance exceeds squared distance between 
+        // points 4 and 8. 
         if (tapped == false) {
           if (getSquaredDistance(results.landmarks[0], 4, 8) < minDistance) {
             console.log("Tapped! " + Date.now());
