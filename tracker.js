@@ -148,6 +148,7 @@ import {
       return;
     }
     console.log("calibrating!");
+    calibrateButton.innerText = "CALIBRATING...";
     calibrateStartTime = Date.now();
     calibratedNumPingsLeft = 0;
     calibratedNumPingsRight = 0;
@@ -213,6 +214,7 @@ import {
                     + "\nRIGHT: " + calibratedDistanceAverageRight);
           minDistanceLeft = calibratedDistanceAverageLeft * minDistanceMultiplier;
           minDistanceRight = calibratedDistanceAverageRight * minDistanceMultiplier;
+          calibrateButton.innerText = "CALIBRATION COMPLETE";
 
 
         // Data collection for calibration
@@ -356,9 +358,11 @@ import {
         progress = 0;
         cursorTimeStart = Date.now();
         console.log("RIGHT ACCURACY: " + (rightAccuracy/pingRight));
+        document.getElementById("right").textContent="RIGHT ACCURACY " + (rightAccuracy/pingRight);
         pingRight = 0;
         rightAccuracy = 0;
         console.log("LEFT ACCURACY: " + (leftAccuracy/pingLeft));
+        document.getElementById("left").textContent="LEFT ACCURACY " + (leftAccuracy/pingLeft);
         pingLeft = 0;
         leftAccuracy = 0;
       }
