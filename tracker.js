@@ -60,6 +60,9 @@ import {
   let pingRight = 0;
 
   let generateBlocks2 = false;
+
+  var metronomeAudio = new Audio("met_120bpm.mp3");
+  var metronomeAudio2 = new Audio("Perc_Can_lo.wav");
   
   // Before we can use HandLandmarker class we must wait for it to finish
   // loading. Machine Learning models can be large and take a moment to
@@ -162,6 +165,7 @@ import {
       console.log("Wait! calibration has not been completed.");
     }
     if (trackTapState == 0) {
+      
       trackTapState = 1;
       trackTapsButton.innerText = "STOP TRACKING";
       leftAccuracy = 0;
@@ -170,9 +174,12 @@ import {
       pingRight = 0;
       cursorPosition = 0;
       cursorTimeStart = Date.now();
+      metronomeAudio.currentTime = 0;
+      metronomeAudio.play();
     } else {
       trackTapState = 0;
       trackTapsButton.innerText = "TRACK TAPS";
+      metronomeAudio.pause();
     }
   }
   
@@ -355,14 +362,16 @@ import {
       let progress = (Date.now() - cursorTimeStart) / cursorDuration;
       // console.log(progress);
       if (progress > 1) {
+        metronomeAudio.play();
+        metronomeAudio.currentTime = 0;
         progress = 0;
         cursorTimeStart = Date.now();
         console.log("RIGHT ACCURACY: " + (rightAccuracy/pingRight));
-        document.getElementById("right").textContent="RIGHT ACCURACY " + (rightAccuracy/pingRight);
+        document.getElementById("right").textContent="Right Accuracy: " + (rightAccuracy/pingRight);
         pingRight = 0;
         rightAccuracy = 0;
         console.log("LEFT ACCURACY: " + (leftAccuracy/pingLeft));
-        document.getElementById("left").textContent="LEFT ACCURACY " + (leftAccuracy/pingLeft);
+        document.getElementById("left").textContent="Left Accuracy: " + (leftAccuracy/pingLeft);
         pingLeft = 0;
         leftAccuracy = 0;
       }
