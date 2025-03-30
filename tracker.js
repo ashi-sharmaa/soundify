@@ -27,17 +27,24 @@ import {
   let webcamRunning = false;
 
   // variables relevant to calibration
-  let calibrateState = 0; // 0 == Not Calibrated, 1 == Starting, 2 == In progress, 3 == Complete
+  let calibrateState = 0; // 0 == Not Calibrated, 1 == In progress, 2 == Complete
   let calibrationTime = 5;
   let calibrateStartTime = 0;
   let calibratedDistanceAverage = 0;
+  let calibratedDistanceAverageRight = 0;
+  let calibratedDistanceAverageLeft = 0;
   let calibratedNumPings = 0;
 
   // variables relevant to tapTracking
   let trackTapState = 0;  // 0 == Not tracking, 1 == Tracking 
                           // Use int rather than boolean in case more states are needed 
   let tapped = false;
+  let leftTapped = false;
+  let rightTapped = false;
   let minDistance = 0;
+  let minDistanceRight = 0;
+  let minDistanceLeft = 0;
+  let minDistanceMultiplier = .25;
   
   // Before we can use HandLandmarker class we must wait for it to finish
   // loading. Machine Learning models can be large and take a moment to
@@ -121,13 +128,16 @@ import {
       console.log("Wait! webcam not running yet.");
       return;
     }
-
+    console.log("calibrating!");
+    calibrateStartTime = Date.now();
+    calibratedNumPings = 0;
+    calibratedDistanceAverage = 0;
     calibrateState = 1;
   }
 
   // Toggles Tap Tracking.
   function flipTapTracking(event) {
-    if (calibrateState != 3) {
+    if (calibrateState != 2) {
       console.log("Wait! calibration has not been completed.");
     }
     if (trackTapState == 0) {
@@ -162,29 +172,36 @@ import {
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
     if (results.landmarks) {
 
-      // When calibration button click, start calibration process
-      if (calibrateState == 1) {
-        console.log("calibrating!");
-        calibrateStartTime = Date.now();
-        calibrateState = 2;
-        calibratedNumPings = 0;
-        calibratedDistanceAverage = 0;
-      } 
-
       // Calibration in Progress
-      if (calibrateState == 2) {
+      if (calibrateState == 1) {
 
         // Calibration ends. Using ms so that it is always 10_000 MS, 
         // and not any other time that rounds to 10_000 MS
         if (Date.now() > calibrateStartTime + calibrationTime * 1000) {
-          calibrateState = 3;
-          calibratedDistanceAverage /= calibratedNumPings;
-          minDistance = calibratedDistanceAverage *= .25;
-          console.log(calibratedDistanceAverage);
+          calibrateState = 2;
+          // calibratedDistanceAverage /= calibratedNumPings;
+          // minDistance = calibratedDistanceAverage *= .25;
+          calibratedDistanceAverageLeft /= calibratedNumPings;
+          calibratedDistanceAverageRight /= calibratedNumPings;
+          console.log("LEFT: " + calibratedDistanceAverageLeft 
+                    + "\nRIGHT: " + calibratedDistanceAverageRight);
+          minDistanceLeft = calibratedDistanceAverageLeft * minDistanceMultiplier;
+          minDistanceRight = calibratedDistanceAverageRight * minDistanceMultiplier;
+
 
         // Data collection for calibration
         } else {
-          calibratedDistanceAverage += getSquaredDistance(results.landmarks[0], 4, 8);
+
+          for (let i = 0; i < results.landmarks.length; i++) {
+            let curHand = getSquaredDistance(results.landmarks[i], 4, 8);
+            console.log(results.handednesses[i][0].categoryName);
+            if (results.handednesses[i][0].categoryName == "Left") {
+              calibratedDistanceAverageLeft += curHand;
+            } else {
+              calibratedDistanceAverageRight += curHand;
+            }
+          }
+          // calibratedDistanceAverage += getSquaredDistance(results.landmarks[0], 4, 8);
           calibratedNumPings++;
           console.log(calibratedNumPings);
         }
@@ -195,14 +212,42 @@ import {
 
         // Taps are defined by the first time the minDistance exceeds squared distance between 
         // points 4 and 8. 
-        if (tapped == false) {
-          if (getSquaredDistance(results.landmarks[0], 4, 8) < minDistance) {
-            console.log("Tapped! " + Date.now());
-            tapped = true;
-          }
-        } else {
-          if (getSquaredDistance(results.landmarks[0], 4, 8) >= minDistance) {
-            tapped = false;
+        // if (tapped == false) {
+        //   if (getSquaredDistance(results.landmarks[0], 4, 8) < minDistance) {
+        //     console.log("Tapped! " + Date.now());
+        //     tapped = true;
+        //   }
+        // } else {
+        //   if (getSquaredDistance(results.landmarks[0], 4, 8) >= minDistance) {
+        //     tapped = false;
+        //   }
+        // }
+
+        for (let i = 0; i < results.landmarks.length; i++) {
+          if (results.handednesses[i][0].categoryName == "Left") {
+            if (leftTapped == true) {
+              if (getSquaredDistance(results.landmarks[i], 4, 8) >= minDistanceLeft) {
+                console.log("LEFT UNTAPPED: " + Date.now());
+                leftTapped = false;
+              }
+            } else {
+              if (getSquaredDistance(results.landmarks[i], 4, 8) < minDistanceLeft) {
+                console.log("LEFT TAPPED: " + Date.now());
+                leftTapped = true;
+              }
+            }
+          } else {
+            if (rightTapped == true) {
+              if (getSquaredDistance(results.landmarks[i], 4, 8) >= minDistanceRight) {
+                console.log("RIGHT UNTAPPED: " + Date.now());
+                rightTapped = false;
+              }
+            } else {
+              if (getSquaredDistance(results.landmarks[i], 4, 8) < minDistanceRight) {
+                console.log("RIGHT TAPPED: " + Date.now());
+                rightTapped = true;
+              }
+            }
           }
         }
       }
